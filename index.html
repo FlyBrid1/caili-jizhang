@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#FBF8F3">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>彩礼记账</title>
+  <style>
+    :root {
+      --bg: #fbf8f3;
+      --ink: #2a241c;
+      --muted: #8d8274;
+      --line: #e7e0d6;
+      --red: #9c1f33;
+      --card: #ffffff;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+      background: #f3efe8;
+      color: var(--ink);
+    }
+    button, input { font-family: inherit; }
+    .phone {
+      width: min(100%, 430px);
+      min-height: 100dvh;
+      margin: 0 auto;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    header {
+      position: relative;
+      height: 56px;
+      flex: none;
+    }
+    header h1 {
+      margin: 0;
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      pointer-events: none;
+    }
+    .add {
+      position: absolute;
+      right: 8px;
+      top: 8px;
+      height: 40px;
+      padding: 0 10px;
+      border: 0;
+      background: transparent;
+      color: var(--ink);
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    main {
+      flex: 1;
+      overflow: auto;
+      padding: 8px 18px 12px;
+    }
+    .empty {
+      margin: 28vh 12px 0;
+      text-align: center;
+      color: var(--muted);
+    }
+    .empty strong {
+      display: block;
+      color: var(--ink);
+      font-size: 16px;
+      font-weight: 650;
+      margin-bottom: 6px;
+    }
+    .stack { display: flex; flex-direction: column; align-items: center; }
+    .tier {
+      position: relative;
+      display: block;
+      border: 0;
+      padding: 0;
+      background: transparent;
+      cursor: pointer;
+      margin: 0 0 10px;
+      filter: drop-shadow(0 7px 5px rgba(120, 72, 40, 0.14));
+    }
+    .tier svg { display: block; width: 100%; height: 100%; }
+    .tier .label {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      line-height: 1.25;
+    }
+    .tier.dome .label { padding-top: 18px; }
+    .tier .name {
+      font-weight: 700;
+      font-size: 17px;
+      letter-spacing: 0.04em;
+      max-width: 86%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .tier .amt {
+      font-weight: 650;
+      font-size: 15px;
+      margin-top: 2px;
+    }
+    .tier.narrow .name { font-size: 15px; }
+    .tier.narrow .amt { font-size: 13px; }
+    .tier:active { transform: translateY(1px); }
+    footer {
+      flex: none;
+      padding: 8px 16px calc(14px + env(safe-area-inset-bottom));
+    }
+    .summary {
+      background: var(--card);
+      border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(90, 60, 30, 0.06);
+      display: grid;
+      grid-template-columns: 1fr 1px 1.35fr;
+      align-items: center;
+      min-height: 84px;
+      padding: 10px 8px;
+    }
+    .summary .col { padding: 4px 12px; }
+    .summary .k {
+      display: block;
+      color: #6f655b;
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+    .summary .v {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 22px;
+      font-weight: 750;
+      letter-spacing: 0.01em;
+    }
+    .split { background: #eee7de; height: 46px; }
+    .mask {
+      position: fixed;
+      inset: 0;
+      background: rgba(70, 48, 28, 0.12);
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 16px 16px calc(18px + env(safe-area-inset-bottom));
+      z-index: 5;
+    }
+    .mask.show { display: flex; }
+    .dialog {
+      width: min(100%, 390px);
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 16px 40px rgba(60, 30, 20, 0.18);
+      padding: 18px 16px 16px;
+    }
+    .dialog h2 {
+      margin: 0 0 14px;
+      text-align: center;
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 72px 1fr;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .row label, .block label {
+      color: #5e564c;
+      font-size: 14px;
+    }
+    .block { margin-bottom: 8px; }
+    .block label { display: block; margin-bottom: 6px; }
+    input[type="text"] {
+      width: 100%;
+      height: 40px;
+      border: 1px solid #e4ddd3;
+      border-radius: 8px;
+      padding: 0 10px;
+      font-size: 16px;
+      color: var(--ink);
+      background: #fff;
+    }
+    input:focus { outline: 2px solid rgba(156, 31, 51, 0.25); border-color: #c9a0a6; }
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .actions button, .danger {
+      height: 42px;
+      border: 0;
+      border-radius: 21px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .actions button { flex: 1; }
+    .cancel { background: #e6e6e6; color: #666; }
+    .save { background: var(--red); color: #fff; font-weight: 650; }
+    .danger {
+      display: none;
+      width: 100%;
+      margin-top: 8px;
+      background: transparent;
+      color: #a12636;
+    }
+    .danger.show { display: block; }
+    .err {
+      min-height: 18px;
+      margin: 0;
+      color: #a12636;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="phone">
+    <header>
+      <h1>彩礼记账</h1>
+      <button class="add" type="button" id="addBtn">＋ 添加</button>
+    </header>
+    <main id="main"></main>
+    <footer>
+      <div class="summary">
+        <div class="col">
+          <span class="k">总记录</span>
+          <span class="v" id="countView">
+            <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+              <rect x="3" y="5" width="18" height="16" rx="2" fill="none" stroke="#9c1f33" stroke-width="1.7"/>
+              <path d="M3 9h18M8 3v4M16 3v4" fill="none" stroke="#9c1f33" stroke-width="1.7" stroke-linecap="round"/>
+            </svg>
+            <span id="countText">0笔</span>
+          </span>
+        </div>
+        <div class="split"></div>
+        <div class="col">
+          <span class="k">合计金额</span>
+          <span class="v" id="sumView">
+            <span id="sumText">0元</span>
+            <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" fill="#e7c56a"/>
+              <circle cx="12" cy="12" r="6.5" fill="none" stroke="#b8892e" stroke-width="1.2"/>
+              <path d="M12 8v8M9.5 10.2c.6-.8 1.5-1.2 2.5-1.2 1.6 0 2.6.9 2.6 2.1 0 2.4-5.2 1.2-5.2 3.5 0 1.1 1 1.9 2.6 1.9 1.1 0 2-.4 2.6-1.2" fill="none" stroke="#8a641e" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+          </span>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <div class="mask" id="mask">
+    <form class="dialog" id="form">
+      <h2 id="dialogTitle">编辑详情</h2>
+      <div class="row">
+        <label for="name">姓名</label>
+        <input id="name" type="text" maxlength="12" autocomplete="name" placeholder="怎么称呼">
+      </div>
+      <div class="row">
+        <label for="relation">关系</label>
+        <input id="relation" type="text" maxlength="12" placeholder="如：表哥">
+      </div>
+      <div class="block">
+        <label for="amount">礼金数额</label>
+        <input id="amount" type="text" inputmode="decimal" placeholder="0元">
+      </div>
+      <p class="err" id="err"></p>
+      <div class="actions">
+        <button class="cancel" type="button" id="cancelBtn">取消</button>
+        <button class="save" type="submit">保存</button>
+      </div>
+      <button class="danger" type="button" id="deleteBtn">删除这笔</button>
+    </form>
+  </div>
+
+  <script>
+    const KEY = "caili-jizhang-v1";
+    const main = document.getElementById("main");
+    const mask = document.getElementById("mask");
+    const form = document.getElementById("form");
+    const nameInput = document.getElementById("name");
+    const relationInput = document.getElementById("relation");
+    const amountInput = document.getElementById("amount");
+    const err = document.getElementById("err");
+    const deleteBtn = document.getElementById("deleteBtn");
+    const dialogTitle = document.getElementById("dialogTitle");
+
+    let records = load();
+    let editingId = null;
+    let deleteArmed = false;
+
+    function load() {
+      try {
+        const data = JSON.parse(localStorage.getItem(KEY) || "[]");
+        return Array.isArray(data) ? data.filter(isRecord) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+    function isRecord(item) {
+      return item && typeof item.id === "string" && typeof item.name === "string" && typeof item.amount === "number";
+    }
+    function saveStore() {
+      localStorage.setItem(KEY, JSON.stringify(records));
+    }
+    function sorted() {
+      return records.slice().sort(function (a, b) {
+        return b.amount - a.amount || a.createdAt - b.createdAt;
+      });
+    }
+    function formatYuan(n) {
+      const text = Number.isInteger(n)
+        ? n.toLocaleString("zh-CN")
+        : n.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return text + "元";
+    }
+    function parseAmount(raw) {
+      const n = Number(String(raw).replace(/[,，元\s]/g, ""));
+      if (!Number.isFinite(n) || n <= 0 || n > 999999999) return null;
+      return Math.round(n * 100) / 100;
+    }
+    function mix(color, t, toward) {
+      return color.map(function (v, i) { return Math.round(v + (toward[i] - v) * t); });
+    }
+    function rgb(c) { return "rgb(" + c[0] + "," + c[1] + "," + c[2] + ")"; }
+    function tierColor(i, n) {
+      const t = n <= 1 ? 0 : i / (n - 1);
+      if (t < 0.45) return mix([150, 28, 46], t / 0.45, [168, 42, 54]);
+      return mix([214, 168, 92], (t - 0.45) / 0.55, [236, 214, 158]);
+    }
+    function textColor(i, n) {
+      const t = n <= 1 ? 0 : i / (n - 1);
+      return t < 0.55 ? "#f4ddb0" : "#fff8ec";
+    }
+    function sub(a, b) { return [a[0] - b[0], a[1] - b[1]]; }
+    function add(a, b) { return [a[0] + b[0], a[1] + b[1]]; }
+    function mul(a, s) { return [a[0] * s, a[1] * s]; }
+    function length(v) { return Math.hypot(v[0], v[1]); }
+    function norm(v) {
+      const l = length(v) || 1;
+      return [v[0] / l, v[1] / l];
+    }
+    function roundPoly(points, radii, segments) {
+      const n = points.length;
+      const out = [];
+      for (let i = 0; i < n; i++) {
+        const prev = points[(i - 1 + n) % n];
+        const curr = points[i];
+        const next = points[(i + 1) % n];
+        const toPrev = sub(prev, curr);
+        const toNext = sub(next, curr);
+        const cut = Math.min(radii[i], length(toPrev) / 2.4, length(toNext) / 2.4);
+        const a = add(curr, mul(norm(toPrev), cut));
+        const b = add(curr, mul(norm(toNext), cut));
+        out.push(a);
+        for (let s = 1; s <= segments; s++) {
+          const t = s / segments;
+          const u = 1 - t;
+          out.push(add(add(mul(a, u * u), mul(curr, 2 * u * t)), mul(b, t * t)));
+        }
+      }
+      return out;
+    }
+    function pathFrom(points) {
+      return "M " + points.map(function (p) {
+        return p[0].toFixed(2) + " " + p[1].toFixed(2);
+      }).join(" L ") + " Z";
+    }
+    function shape(w, h, inset, dome) {
+      if (dome) {
+        return pathFrom(roundPoly(
+          [[w / 2, 1], [w - 1, h - 1], [1, h - 1]],
+          [Math.min(w * 0.42, 48), 18, 18],
+          8
+        ));
+      }
+      const top = Math.max(8, w - inset * 2);
+      const left = (w - top) / 2;
+      return pathFrom(roundPoly(
+        [[left, 1], [w - left, 1], [w - 1, h - 1], [1, h - 1]],
+        [12, 12, 14, 14],
+        4
+      ));
+    }
+    function metrics(i, n, containerW) {
+      const outer = containerW * 0.98;
+      const topBase = Math.max(148, containerW * 0.36);
+      if (n === 1) return { w: Math.round(Math.max(156, containerW * 0.42)), h: 118, inset: 0, dome: true };
+      if (i === 0) return { w: Math.round(topBase), h: 118, inset: 0, dome: true };
+      const span = n - 1;
+      const top = topBase + (outer - topBase) * ((i - 1) / span);
+      const bottom = topBase + (outer - topBase) * (i / span);
+      return { w: Math.round(bottom), h: 76, inset: (bottom - top) / 2, dome: false };
+    }
+    function tierSvg(w, h, inset, dome, base, id) {
+      const light = mix(base, 0.34, [255, 255, 255]);
+      const dark = mix(base, 0.2, [40, 16, 16]);
+      const d = shape(w, h, inset, dome);
+      return '<svg viewBox="0 0 ' + w + ' ' + h + '" aria-hidden="true">' +
+        '<defs><linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1">' +
+        '<stop offset="0%" stop-color="' + rgb(light) + '"/>' +
+        '<stop offset="38%" stop-color="' + rgb(base) + '"/>' +
+        '<stop offset="100%" stop-color="' + rgb(dark) + '"/>' +
+        '</linearGradient></defs>' +
+        '<path d="' + d + '" fill="url(#' + id + ')"/>' +
+        '</svg>';
+    }
+    function render() {
+      const list = sorted();
+      const total = list.reduce(function (sum, item) { return sum + item.amount; }, 0);
+      document.getElementById("countText").textContent = list.length + "笔";
+      document.getElementById("sumText").textContent = formatYuan(total);
+      if (!list.length) {
+        main.innerHTML = '<div class="empty"><strong>还没有记录</strong>点右上角添加第一笔礼金</div>';
+        return;
+      }
+      const width = main.clientWidth - 8;
+      const html = list.map(function (item, i) {
+        const m = metrics(i, list.length, width);
+        const base = tierColor(i, list.length);
+        return '<button type="button" class="tier' + (m.dome ? ' dome' : '') + (m.w < 190 ? ' narrow' : '') + '" data-id="' + item.id + '" style="width:' + m.w + 'px;height:' + m.h + 'px;color:' + textColor(i, list.length) + '">' +
+          tierSvg(m.w, m.h, m.inset, m.dome, base, "g" + i) +
+          '<span class="label"><span class="name">' + escapeHtml(item.name) + '</span><span class="amt">' + formatYuan(item.amount) + '</span></span>' +
+          '</button>';
+      }).join("");
+      main.innerHTML = '<div class="stack">' + html + '</div>';
+    }
+    function escapeHtml(text) {
+      return text.replace(/[&<>"']/g, function (ch) {
+        return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch];
+      });
+    }
+    function openDialog(record) {
+      editingId = record ? record.id : null;
+      deleteArmed = false;
+      dialogTitle.textContent = record ? "编辑详情" : "添加礼金";
+      nameInput.value = record ? record.name : "";
+      relationInput.value = record && record.relation ? record.relation : "";
+      amountInput.value = record ? formatYuan(record.amount) : "";
+      err.textContent = "";
+      deleteBtn.textContent = "删除这笔";
+      deleteBtn.classList.toggle("show", !!record);
+      mask.classList.add("show");
+      nameInput.focus();
+    }
+    function closeDialog() {
+      mask.classList.remove("show");
+      editingId = null;
+      deleteArmed = false;
+    }
+    document.getElementById("addBtn").addEventListener("click", function () { openDialog(null); });
+    document.getElementById("cancelBtn").addEventListener("click", closeDialog);
+    mask.addEventListener("click", function (event) {
+      if (event.target === mask) closeDialog();
+    });
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") closeDialog();
+    });
+    amountInput.addEventListener("focus", function () {
+      const n = parseAmount(amountInput.value);
+      amountInput.value = n == null ? "" : String(n);
+    });
+    amountInput.addEventListener("blur", function () {
+      const n = parseAmount(amountInput.value);
+      if (n != null) amountInput.value = formatYuan(n);
+    });
+    main.addEventListener("click", function (event) {
+      const button = event.target.closest(".tier");
+      if (!button) return;
+      const record = records.find(function (item) { return item.id === button.dataset.id; });
+      if (record) openDialog(record);
+    });
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      const name = nameInput.value.trim();
+      const relation = relationInput.value.trim();
+      const amount = parseAmount(amountInput.value);
+      if (!name) { err.textContent = "请填写姓名"; return; }
+      if (amount == null) { err.textContent = "请填写大于 0 的礼金数额"; return; }
+      if (editingId) {
+        const record = records.find(function (item) { return item.id === editingId; });
+        if (record) {
+          record.name = name;
+          record.relation = relation;
+          record.amount = amount;
+        }
+      } else {
+        records.push({
+          id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+          name: name,
+          relation: relation,
+          amount: amount,
+          createdAt: Date.now()
+        });
+      }
+      saveStore();
+      closeDialog();
+      render();
+    });
+    deleteBtn.addEventListener("click", function () {
+      if (!deleteArmed) {
+        deleteArmed = true;
+        deleteBtn.textContent = "确认删除";
+        return;
+      }
+      records = records.filter(function (item) { return item.id !== editingId; });
+      saveStore();
+      closeDialog();
+      render();
+    });
+    window.addEventListener("resize", render);
+    render();
+  </script>
+</body>
+</html>
